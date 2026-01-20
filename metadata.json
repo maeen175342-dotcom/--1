@@ -1,7 +1,8 @@
 {
   "name": "دردشة ثنائية خاصة",
-  "description": "تطبيق دردشة خاص وآمن لشخصين مع دعم رفع الصور والملفات عبر Firebase.",
+  "description": "تطبيق دردشة خاص وآمن لشخصين مع دعم رفع الصور والملفات والرسائل الصوتية.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone"
   ]
 }

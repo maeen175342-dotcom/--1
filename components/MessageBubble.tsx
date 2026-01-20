@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Message } from '../types';
-import { FileIcon, Download } from 'lucide-react';
+import { FileIcon, Download, Play, Pause } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: Message;
@@ -15,9 +15,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) => {
   });
 
   const isImage = message.fileType?.startsWith('image/');
+  const isAudio = message.fileType?.startsWith('audio/');
 
   return (
-    <div className={`flex flex-col ${isOwn ? 'items-start' : 'items-end'} mb-4`}>
+    <div className={`flex flex-col ${isOwn ? 'items-start' : 'items-end'} mb-4 w-full`}>
       <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl p-1 shadow-sm ${
         isOwn 
           ? 'bg-blue-600 text-white rounded-tl-none' 
@@ -41,8 +42,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) => {
           </div>
         )}
 
+        {/* عرض الرسائل الصوتية */}
+        {message.fileUrl && isAudio && (
+          <div className={`p-2 min-w-[200px] ${isOwn ? 'text-white' : 'text-slate-800'}`}>
+            <audio 
+              controls 
+              src={message.fileUrl} 
+              className={`w-full h-10 ${isOwn ? 'filter invert' : ''}`}
+            >
+              متصفحك لا يدعم تشغيل الصوت.
+            </audio>
+          </div>
+        )}
+
         {/* عرض الملفات الأخرى */}
-        {message.fileUrl && !isImage && (
+        {message.fileUrl && !isImage && !isAudio && (
           <a 
             href={message.fileUrl} 
             target="_blank" 
@@ -54,7 +68,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) => {
             <div className={`p-2 rounded-lg ${isOwn ? 'bg-blue-500' : 'bg-white shadow-sm'}`}>
               <FileIcon size={18} className={isOwn ? 'text-white' : 'text-blue-600'} />
             </div>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden text-right">
               <p className="text-xs font-medium truncate">ملف مرفق</p>
               <p className="text-[10px] opacity-70">انقر للتحميل</p>
             </div>
@@ -63,7 +77,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) => {
         )}
 
         {message.text && (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words px-3 py-2">
+          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words px-3 py-2 text-right">
             {message.text}
           </p>
         )}

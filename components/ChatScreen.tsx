@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, LogOut, MessageSquare, Image as ImageIcon, Paperclip, Loader2 } from 'lucide-react';
+import { Send, LogOut, MessageSquare, Image as ImageIcon, Paperclip, Loader2, Mic, Square, X } from 'lucide-react';
 import { Message } from '../types';
 import { sendMessage, subscribeToMessages, uploadFile } from '../services/firebase';
 import MessageBubble from './MessageBubble';
@@ -15,6 +15,14 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Audio Recording States
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<number | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,8 +39,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
     }
   }, [messages]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSend = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!inputText.trim() || isSending) return;
 
     setIsSending(true);
@@ -63,6 +71,73 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
     }
   };
 
+  // Recording Logic
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (audioBlob.size > 1000) { // Only send if it's not a tiny accidental click
+          const file = new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
+          setIsUploading(true);
+          try {
+            const { url, type } = await uploadFile(file);
+            await sendMessage(userName, '', url, type);
+          } catch (err) {
+            console.error("Error uploading voice note:", err);
+          } finally {
+            setIsUploading(false);
+          }
+        }
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      timerRef.current = window.setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Mic access error:", err);
+      alert("يرجى تفعيل صلاحية الميكروفون لتسجيل الصوت.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.onstop = null; // Prevent the upload on stop
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+      audioChunksRef.current = [];
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="flex flex-col h-screen bg-slate-50">
       {/* Header */}
@@ -71,11 +146,11 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
           <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
             <MessageSquare size={20} />
           </div>
-          <div>
+          <div className="text-right">
             <h2 className="text-sm font-bold text-slate-800">دردشة ثنائية خاصة</h2>
-            <p className="text-[11px] text-emerald-500 font-medium flex items-center">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full ml-1.5 animate-pulse"></span>
+            <p className="text-[11px] text-emerald-500 font-medium flex items-center justify-end">
               متصل الآن
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse"></span>
             </p>
           </div>
         </div>
@@ -113,7 +188,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
           <div className="flex justify-center p-4">
             <div className="bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100 flex items-center space-x-2 space-x-reverse text-blue-600 text-xs font-medium">
               <Loader2 size={14} className="animate-spin" />
-              <span>جاري رفع الملف...</span>
+              <span>جاري المعالجة...</span>
             </div>
           </div>
         )}
@@ -121,45 +196,78 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
 
       {/* Input Area */}
       <div className="bg-white border-t border-slate-200 p-4 pb-safe">
-        <form onSubmit={handleSend} className="max-w-4xl mx-auto flex items-center space-x-2 space-x-reverse">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
-            title="إرفاق صورة أو ملف"
-          >
-            <Paperclip size={22} />
-          </button>
-          
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileChange} 
-            className="hidden" 
-            accept="image/*, .pdf, .doc, .docx, .zip"
-          />
+        <div className="max-w-4xl mx-auto">
+          {isRecording ? (
+            <div className="flex items-center justify-between bg-red-50 text-red-600 px-4 py-2 rounded-2xl animate-pulse border border-red-100">
+              <div className="flex items-center space-x-3 space-x-reverse">
+                <div className="w-3 h-3 bg-red-600 rounded-full animate-ping"></div>
+                <span className="font-mono font-bold text-lg">{formatTime(recordingTime)}</span>
+              </div>
+              <div className="flex space-x-2 space-x-reverse">
+                <button 
+                  onClick={cancelRecording}
+                  className="p-2 bg-white text-slate-400 rounded-full hover:text-red-600 transition-colors shadow-sm"
+                >
+                  <X size={20} />
+                </button>
+                <button 
+                  onClick={stopRecording}
+                  className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow-lg"
+                >
+                  <Square size={20} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSend} className="flex items-center space-x-2 space-x-reverse">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
+                title="إرفاق ملف"
+              >
+                <Paperclip size={22} />
+              </button>
+              
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+                accept="image/*, audio/*, .pdf, .doc, .docx, .zip"
+              />
 
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="اكتب رسالتك هنا..."
-            className="flex-1 bg-slate-100 border-none rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-          />
-          
-          <button
-            type="submit"
-            disabled={(!inputText.trim() && !isUploading) || isSending}
-            className={`p-3 rounded-2xl flex items-center justify-center transition-all ${
-              (!inputText.trim() && !isUploading) || isSending
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white shadow-lg shadow-blue-100 active:scale-95'
-            }`}
-          >
-            <Send size={20} className={`transform rotate-180 ${isSending ? 'animate-pulse' : ''}`} />
-          </button>
-        </form>
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="اكتب رسالتك هنا..."
+                className="flex-1 bg-slate-100 border-none rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-right"
+              />
+
+              {inputText.trim() ? (
+                <button
+                  type="submit"
+                  disabled={isSending}
+                  className="p-3 rounded-2xl flex items-center justify-center transition-all bg-blue-600 text-white shadow-lg shadow-blue-100 active:scale-95"
+                >
+                  <Send size={20} className={`transform rotate-180 ${isSending ? 'animate-pulse' : ''}`} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={startRecording}
+                  disabled={isUploading}
+                  className="p-3 rounded-2xl flex items-center justify-center transition-all bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600 active:scale-95"
+                  title="تسجيل صوتي"
+                >
+                  <Mic size={22} />
+                </button>
+              )}
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
