@@ -1,10 +1,9 @@
-
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, push, onValue, serverTimestamp, query, limitToLast } from 'firebase/database';
 import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Message } from '../types';
 
-// إعدادات Firebase الخاصة بك التي زودتني بها
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCFECwqDtbKTchDbkXDLmZloYRCp2bJ2_Y",
   authDomain: "duo-chat-34cca.firebaseapp.com",
@@ -16,6 +15,7 @@ const firebaseConfig = {
   measurementId: "G-Z3JL16N4J3"
 };
 
+// Initialize Firebase app and services once
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
@@ -39,33 +39,42 @@ export const sendMessage = async (sender: string, text: string, fileUrl?: string
 };
 
 export const uploadFile = async (file: File): Promise<{ url: string, type: string }> => {
-  const fileId = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-  const storageRef = sRef(storage, `uploads/${fileId}`);
-  const snapshot = await uploadBytes(storageRef, file);
-  const url = await getDownloadURL(snapshot.ref);
-  return { url, type: file.type };
+  try {
+    const fileId = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+    const storageRef = sRef(storage, `uploads/${fileId}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(snapshot.ref);
+    return { url, type: file.type };
+  } catch (error) {
+    console.error("Error in uploadFile:", error);
+    throw error;
+  }
 };
 
 export const subscribeToMessages = (callback: (messages: Message[]) => void) => {
-  const messagesRef = query(ref(db, MESSAGES_PATH), limitToLast(100));
-  
-  return onValue(messagesRef, (snapshot) => {
-    const data = snapshot.val();
-    const messageList: Message[] = [];
+  try {
+    const messagesRef = query(ref(db, MESSAGES_PATH), limitToLast(100));
     
-    if (data) {
-      Object.entries(data).forEach(([key, value]: [string, any]) => {
-        messageList.push({
-          id: key,
-          ...value,
-          // التعامل مع الطابع الزمني إذا كان قيد المعالجة من الخادم
-          timestamp: value.timestamp || Date.now()
+    return onValue(messagesRef, (snapshot) => {
+      const data = snapshot.val();
+      const messageList: Message[] = [];
+      
+      if (data) {
+        Object.entries(data).forEach(([key, value]: [string, any]) => {
+          messageList.push({
+            id: key,
+            ...value,
+            timestamp: value.timestamp || Date.now()
+          });
         });
-      });
-    }
-    
-    callback(messageList.sort((a, b) => a.timestamp - b.timestamp));
-  }, (error) => {
-    console.error("Firebase subscription error:", error);
-  });
+      }
+      
+      callback(messageList.sort((a, b) => a.timestamp - b.timestamp));
+    }, (error) => {
+      console.error("Firebase subscription error:", error);
+    });
+  } catch (err) {
+    console.error("Critical error in subscribeToMessages:", err);
+    return () => {};
+  }
 };

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -7,7 +6,7 @@
   <meta name="theme-color" content="#2563eb">
   <title>دردشة ثنائية خاصة</title>
   
-  <!-- Favicon إصلاح خطأ 404 عن طريق إضافة أيقونة مدمجة -->
+  <!-- Inline Favicon to fix 404 errors -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>">
   
   <script src="https://cdn.tailwindcss.com"></script>
@@ -19,7 +18,6 @@
       background-color: #f8fafc;
       -webkit-tap-highlight-color: transparent;
     }
-    /* إخفاء شريط التمرير للمتصفحات المختلفة */
     .no-scrollbar::-webkit-scrollbar {
       display: none;
     }
@@ -27,24 +25,34 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+    /* Loading state visible until React mounts */
+    #root:empty::before {
+      content: 'جاري التحميل...';
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #64748b;
+      font-size: 1.1rem;
+      width: 100%;
+    }
   </style>
-
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "firebase/app": "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js",
-    "firebase/database": "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js",
-    "firebase/storage": "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js",
-    "firebase/": "https://esm.sh/firebase@^12.8.0/"
+    "firebase/": "https://esm.sh/firebase@^12.8.0/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
   }
 }
 </script>
 </head>
 <body class="bg-slate-50 overflow-hidden">
   <div id="root"></div>
+  
+  <!-- This script tag is CRITICAL for Vite/Vercel to bundle and mount the React application -->
+  <script type="module" src="./index.tsx"></script>
 </body>
 </html>
