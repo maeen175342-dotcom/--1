@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, LogOut, MessageSquare } from 'lucide-react';
+import { Send, LogOut, MessageSquare, Image as ImageIcon, Paperclip, Loader2 } from 'lucide-react';
 import { Message } from '../types';
-import { sendMessage, subscribeToMessages } from '../services/firebase';
+import { sendMessage, subscribeToMessages, uploadFile } from '../services/firebase';
 import MessageBubble from './MessageBubble';
 
 interface ChatScreenProps {
@@ -14,7 +14,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToMessages((fetchedMessages) => {
@@ -38,9 +40,26 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
       await sendMessage(userName, inputText.trim());
       setInputText('');
     } catch (error) {
-      console.error("Failed to send:", error);
+      console.error("خطأ في الإرسال:", error);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const { url, type } = await uploadFile(file);
+      await sendMessage(userName, '', url, type);
+    } catch (error) {
+      console.error("خطأ في رفع الملف:", error);
+      alert("فشل في رفع الملف، يرجى المحاولة مرة أخرى.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -90,11 +109,37 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
             />
           ))
         )}
+        {isUploading && (
+          <div className="flex justify-center p-4">
+            <div className="bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100 flex items-center space-x-2 space-x-reverse text-blue-600 text-xs font-medium">
+              <Loader2 size={14} className="animate-spin" />
+              <span>جاري رفع الملف...</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Input Area */}
       <div className="bg-white border-t border-slate-200 p-4 pb-safe">
-        <form onSubmit={handleSend} className="max-w-4xl mx-auto flex space-x-3 space-x-reverse">
+        <form onSubmit={handleSend} className="max-w-4xl mx-auto flex items-center space-x-2 space-x-reverse">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
+            title="إرفاق صورة أو ملف"
+          >
+            <Paperclip size={22} />
+          </button>
+          
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            className="hidden" 
+            accept="image/*, .pdf, .doc, .docx, .zip"
+          />
+
           <input
             type="text"
             value={inputText}
@@ -102,11 +147,12 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
             placeholder="اكتب رسالتك هنا..."
             className="flex-1 bg-slate-100 border-none rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
           />
+          
           <button
             type="submit"
-            disabled={!inputText.trim() || isSending}
+            disabled={(!inputText.trim() && !isUploading) || isSending}
             className={`p-3 rounded-2xl flex items-center justify-center transition-all ${
-              !inputText.trim() || isSending
+              (!inputText.trim() && !isUploading) || isSending
                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                 : 'bg-blue-600 text-white shadow-lg shadow-blue-100 active:scale-95'
             }`}

@@ -4,6 +4,8 @@ export interface Message {
   sender: string;
   text: string;
   timestamp: number;
+  fileUrl?: string;
+  fileType?: string;
 }
 
 export interface UserSession {
