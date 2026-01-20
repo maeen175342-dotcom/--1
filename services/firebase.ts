@@ -4,6 +4,7 @@ import { getDatabase, ref, push, onValue, serverTimestamp, query, limitToLast } 
 import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Message } from '../types';
 
+// إعدادات Firebase الخاصة بك التي زودتني بها
 const firebaseConfig = {
   apiKey: "AIzaSyCFECwqDtbKTchDbkXDLmZloYRCp2bJ2_Y",
   authDomain: "duo-chat-34cca.firebaseapp.com",
@@ -22,18 +23,23 @@ const storage = getStorage(app);
 const MESSAGES_PATH = 'private-chat-messages';
 
 export const sendMessage = async (sender: string, text: string, fileUrl?: string, fileType?: string) => {
-  const messagesRef = ref(db, MESSAGES_PATH);
-  await push(messagesRef, {
-    sender,
-    text: text || '',
-    fileUrl: fileUrl || null,
-    fileType: fileType || null,
-    timestamp: serverTimestamp()
-  });
+  try {
+    const messagesRef = ref(db, MESSAGES_PATH);
+    await push(messagesRef, {
+      sender,
+      text: text || '',
+      fileUrl: fileUrl || null,
+      fileType: fileType || null,
+      timestamp: serverTimestamp()
+    });
+  } catch (error) {
+    console.error("Error in sendMessage:", error);
+    throw error;
+  }
 };
 
 export const uploadFile = async (file: File): Promise<{ url: string, type: string }> => {
-  const fileId = `${Date.now()}-${file.name}`;
+  const fileId = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
   const storageRef = sRef(storage, `uploads/${fileId}`);
   const snapshot = await uploadBytes(storageRef, file);
   const url = await getDownloadURL(snapshot.ref);
@@ -51,11 +57,15 @@ export const subscribeToMessages = (callback: (messages: Message[]) => void) => 
       Object.entries(data).forEach(([key, value]: [string, any]) => {
         messageList.push({
           id: key,
-          ...value
+          ...value,
+          // التعامل مع الطابع الزمني إذا كان قيد المعالجة من الخادم
+          timestamp: value.timestamp || Date.now()
         });
       });
     }
     
     callback(messageList.sort((a, b) => a.timestamp - b.timestamp));
+  }, (error) => {
+    console.error("Firebase subscription error:", error);
   });
 };
