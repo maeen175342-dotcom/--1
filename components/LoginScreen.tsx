@@ -14,7 +14,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password !== '1919') {
+    if (password !== '7770') {
       setError('رمز الدخول غير صحيح.');
       return;
     }
