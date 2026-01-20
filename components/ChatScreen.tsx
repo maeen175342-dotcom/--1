@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, LogOut, MessageSquare, Image as ImageIcon, Paperclip, Loader2, Mic, Square, X } from 'lucide-react';
+import { Send, LogOut, MessageSquare, Image as ImageIcon, Paperclip, Loader2, Mic, Square, X, Circle } from 'lucide-react';
 import { Message } from '../types';
 import { sendMessage, subscribeToMessages, uploadFile } from '../services/firebase';
 import MessageBubble from './MessageBubble';
@@ -71,7 +71,6 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
     }
   };
 
-  // Recording Logic
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -80,14 +79,12 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        if (audioBlob.size > 1000) { // Only send if it's not a tiny accidental click
+        if (audioBlob.size > 1000) {
           const file = new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
           setIsUploading(true);
           try {
@@ -110,7 +107,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
       }, 1000);
     } catch (err) {
       console.error("Mic access error:", err);
-      alert("يرجى تفعيل صلاحية الميكروفون لتسجيل الصوت.");
+      alert("يرجى تفعيل صلاحية الميكروفون.");
     }
   };
 
@@ -124,7 +121,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
 
   const cancelRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.onstop = null; // Prevent the upload on stop
+      mediaRecorderRef.current.onstop = null;
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       if (timerRef.current) clearInterval(timerRef.current);
@@ -139,95 +136,102 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center space-x-3 space-x-reverse">
-          <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
-            <MessageSquare size={20} />
+    <div className="flex flex-col h-[100dvh] bg-slate-50 overflow-hidden">
+      {/* Header - Fixed Top */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 md:py-4 flex items-center justify-center sticky top-0 z-20">
+        <div className="w-full max-w-4xl flex items-center justify-between">
+          <div className="flex items-center space-x-3 space-x-reverse">
+            <div className="bg-blue-600 p-2 rounded-xl text-white shadow-md shadow-blue-100">
+              <MessageSquare size={20} className="md:w-6 md:h-6" />
+            </div>
+            <div className="text-right">
+              <h2 className="text-sm md:text-base font-bold text-slate-800 leading-none mb-1">المحادثة الثنائية</h2>
+              <div className="flex items-center justify-end">
+                <span className="text-[10px] md:text-xs text-emerald-500 font-bold ml-1.5">نشط الآن</span>
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-sm shadow-emerald-200"></span>
+              </div>
+            </div>
           </div>
-          <div className="text-right">
-            <h2 className="text-sm font-bold text-slate-800">دردشة ثنائية خاصة</h2>
-            <p className="text-[11px] text-emerald-500 font-medium flex items-center justify-end">
-              متصل الآن
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse"></span>
-            </p>
-          </div>
+          <button 
+            onClick={onLogout}
+            className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all active:scale-90"
+            title="تسجيل الخروج"
+          >
+            <LogOut size={20} className="transform rotate-180 md:w-6 md:h-6" />
+          </button>
         </div>
-        <button 
-          onClick={onLogout}
-          className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-          title="تسجيل الخروج"
-        >
-          <LogOut size={20} className="transform rotate-180" />
-        </button>
       </header>
 
-      {/* Messages Area */}
+      {/* Messages Area - Full width on mobile, centered on desktop */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 no-scrollbar space-y-2 scroll-smooth"
+        className="flex-1 overflow-y-auto px-4 py-6 no-scrollbar space-y-4 scroll-smooth"
       >
-        {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center opacity-50 grayscale p-8">
-            <div className="w-16 h-16 bg-slate-200 rounded-full mb-4 flex items-center justify-center">
-               <MessageSquare size={24} className="text-slate-400" />
+        <div className="max-w-4xl mx-auto flex flex-col min-h-full">
+          {messages.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center opacity-60 p-8">
+              <div className="w-20 h-20 bg-slate-200 rounded-full mb-6 flex items-center justify-center animate-bounce">
+                 <MessageSquare size={32} className="text-slate-400" />
+              </div>
+              <p className="text-sm md:text-base text-slate-600 font-medium">أهلاً بك! ابدأ بإرسال أول رسالة في المحادثة.</p>
             </div>
-            <p className="text-sm text-slate-500">لا توجد رسائل بعد. ابدأ المحادثة الآن!</p>
-          </div>
-        ) : (
-          messages.map((msg) => (
-            <MessageBubble 
-              key={msg.id} 
-              message={msg} 
-              isOwn={msg.sender === userName} 
-            />
-          ))
-        )}
-        {isUploading && (
-          <div className="flex justify-center p-4">
-            <div className="bg-white px-4 py-2 rounded-full shadow-sm border border-slate-100 flex items-center space-x-2 space-x-reverse text-blue-600 text-xs font-medium">
-              <Loader2 size={14} className="animate-spin" />
-              <span>جاري المعالجة...</span>
+          ) : (
+            messages.map((msg) => (
+              <MessageBubble 
+                key={msg.id} 
+                message={msg} 
+                isOwn={msg.sender === userName} 
+              />
+            ))
+          )}
+          {isUploading && (
+            <div className="flex justify-center p-4">
+              <div className="bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center space-x-2 space-x-reverse text-xs font-bold animate-pulse">
+                <Loader2 size={14} className="animate-spin" />
+                <span>جاري معالجة الملف...</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Input Area */}
-      <div className="bg-white border-t border-slate-200 p-4 pb-safe">
+      {/* Input Area - Fixed Bottom */}
+      <div className="bg-white border-t border-slate-200 p-3 md:p-4 pb-safe">
         <div className="max-w-4xl mx-auto">
           {isRecording ? (
-            <div className="flex items-center justify-between bg-red-50 text-red-600 px-4 py-2 rounded-2xl animate-pulse border border-red-100">
-              <div className="flex items-center space-x-3 space-x-reverse">
-                <div className="w-3 h-3 bg-red-600 rounded-full animate-ping"></div>
-                <span className="font-mono font-bold text-lg">{formatTime(recordingTime)}</span>
+            <div className="flex items-center justify-between bg-red-50 text-red-600 px-4 py-3 rounded-2xl animate-pulse border border-red-100 shadow-sm">
+              <div className="flex items-center space-x-4 space-x-reverse">
+                <div className="relative">
+                  <Circle size={12} className="fill-red-600 text-red-600" />
+                  <div className="absolute inset-0 bg-red-600 rounded-full animate-ping opacity-75"></div>
+                </div>
+                <span className="font-mono font-bold text-xl">{formatTime(recordingTime)}</span>
               </div>
-              <div className="flex space-x-2 space-x-reverse">
+              <div className="flex space-x-3 space-x-reverse">
                 <button 
                   onClick={cancelRecording}
-                  className="p-2 bg-white text-slate-400 rounded-full hover:text-red-600 transition-colors shadow-sm"
+                  className="p-2.5 bg-white text-slate-400 rounded-full hover:text-red-600 transition-colors shadow-sm active:scale-90"
                 >
-                  <X size={20} />
+                  <X size={22} />
                 </button>
                 <button 
                   onClick={stopRecording}
-                  className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow-lg"
+                  className="p-3 bg-red-600 text-white rounded-full hover:bg-red-700 transition-all shadow-lg shadow-red-100 active:scale-90"
                 >
-                  <Square size={20} />
+                  <Square size={22} />
                 </button>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSend} className="flex items-center space-x-2 space-x-reverse">
+            <form onSubmit={handleSend} className="flex items-center space-x-2 md:space-x-3 space-x-reverse">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
+                className="p-3.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all active:scale-90"
                 title="إرفاق ملف"
               >
-                <Paperclip size={22} />
+                <Paperclip size={24} />
               </button>
               
               <input 
@@ -238,31 +242,33 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ userName, onLogout }) => {
                 accept="image/*, audio/*, .pdf, .doc, .docx, .zip"
               />
 
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="اكتب رسالتك هنا..."
-                className="flex-1 bg-slate-100 border-none rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-right"
-              />
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="اكتب رسالة..."
+                  className="w-full bg-slate-100 border-none rounded-2xl px-5 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-right shadow-inner"
+                />
+              </div>
 
               {inputText.trim() ? (
                 <button
                   type="submit"
                   disabled={isSending}
-                  className="p-3 rounded-2xl flex items-center justify-center transition-all bg-blue-600 text-white shadow-lg shadow-blue-100 active:scale-95"
+                  className="p-3.5 rounded-2xl flex items-center justify-center transition-all bg-blue-600 text-white shadow-xl shadow-blue-200 active:scale-90"
                 >
-                  <Send size={20} className={`transform rotate-180 ${isSending ? 'animate-pulse' : ''}`} />
+                  <Send size={24} className={`transform rotate-180 ${isSending ? 'animate-pulse' : ''}`} />
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={startRecording}
                   disabled={isUploading}
-                  className="p-3 rounded-2xl flex items-center justify-center transition-all bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600 active:scale-95"
+                  className="p-3.5 rounded-2xl flex items-center justify-center transition-all bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600 active:scale-90"
                   title="تسجيل صوتي"
                 >
-                  <Mic size={22} />
+                  <Mic size={24} />
                 </button>
               )}
             </form>

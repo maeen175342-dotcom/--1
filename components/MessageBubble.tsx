@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Message } from '../types';
-import { FileIcon, Download, Play, Pause } from 'lucide-react';
+import { FileIcon, Download } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: Message;
@@ -18,71 +18,73 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) => {
   const isAudio = message.fileType?.startsWith('audio/');
 
   return (
-    <div className={`flex flex-col ${isOwn ? 'items-start' : 'items-end'} mb-4 w-full`}>
-      <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl p-1 shadow-sm ${
+    <div className={`flex flex-col ${isOwn ? 'items-start' : 'items-end'} w-full`}>
+      <div className={`max-w-[88%] sm:max-w-[75%] md:max-w-[60%] rounded-2xl md:rounded-3xl p-1 shadow-sm transition-all duration-300 ${
         isOwn 
           ? 'bg-blue-600 text-white rounded-tl-none' 
           : 'bg-white text-slate-800 border border-slate-100 rounded-tr-none'
       }`}>
         {!isOwn && (
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pt-1">
+          <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-blue-500 px-3 pt-2 pb-1 text-right">
             {message.sender}
           </p>
         )}
         
-        {/* عرض الصور */}
+        {/* Images */}
         {message.fileUrl && isImage && (
           <div className="p-1">
             <img 
               src={message.fileUrl} 
               alt="مرفق" 
-              className="rounded-xl max-h-64 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+              className="rounded-xl md:rounded-2xl max-h-64 md:max-h-96 w-full object-cover cursor-pointer hover:brightness-95 transition-all"
               onClick={() => window.open(message.fileUrl, '_blank')}
+              loading="lazy"
             />
           </div>
         )}
 
-        {/* عرض الرسائل الصوتية */}
+        {/* Audio (Voice Notes) */}
         {message.fileUrl && isAudio && (
-          <div className={`p-2 min-w-[200px] ${isOwn ? 'text-white' : 'text-slate-800'}`}>
+          <div className={`p-2 min-w-[220px] md:min-w-[280px] ${isOwn ? 'text-white' : 'text-slate-800'}`}>
             <audio 
               controls 
               src={message.fileUrl} 
-              className={`w-full h-10 ${isOwn ? 'filter invert' : ''}`}
+              className={`w-full h-10 ${isOwn ? 'filter brightness-0 invert' : 'opacity-80'}`}
             >
-              متصفحك لا يدعم تشغيل الصوت.
+              متصفحك لا يدعم الصوت.
             </audio>
           </div>
         )}
 
-        {/* عرض الملفات الأخرى */}
+        {/* Other Files */}
         {message.fileUrl && !isImage && !isAudio && (
           <a 
             href={message.fileUrl} 
             target="_blank" 
             rel="noopener noreferrer"
-            className={`flex items-center space-x-2 space-x-reverse p-3 rounded-xl m-1 ${
-              isOwn ? 'bg-blue-700' : 'bg-slate-100'
+            className={`flex items-center space-x-3 space-x-reverse p-4 rounded-xl m-1 transition-colors ${
+              isOwn ? 'bg-blue-700/50 hover:bg-blue-700' : 'bg-slate-50 hover:bg-slate-100'
             }`}
           >
-            <div className={`p-2 rounded-lg ${isOwn ? 'bg-blue-500' : 'bg-white shadow-sm'}`}>
-              <FileIcon size={18} className={isOwn ? 'text-white' : 'text-blue-600'} />
+            <div className={`p-2.5 rounded-xl ${isOwn ? 'bg-blue-500 shadow-sm' : 'bg-white shadow-sm'}`}>
+              <FileIcon size={20} className={isOwn ? 'text-white' : 'text-blue-600'} />
             </div>
             <div className="flex-1 overflow-hidden text-right">
-              <p className="text-xs font-medium truncate">ملف مرفق</p>
-              <p className="text-[10px] opacity-70">انقر للتحميل</p>
+              <p className="text-sm font-bold truncate">مستند / ملف</p>
+              <p className="text-[10px] opacity-70">انقر للمعاينة والتحميل</p>
             </div>
-            <Download size={16} className="opacity-50" />
+            <Download size={18} className="opacity-40" />
           </a>
         )}
 
+        {/* Text Message */}
         {message.text && (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words px-3 py-2 text-right">
+          <p className="text-[15px] md:text-base leading-relaxed whitespace-pre-wrap break-words px-4 py-2.5 text-right">
             {message.text}
           </p>
         )}
       </div>
-      <span className="text-[10px] text-slate-400 mt-1 px-1">
+      <span className="text-[10px] md:text-xs text-slate-400 mt-1.5 px-2 font-medium">
         {time}
       </span>
     </div>
